@@ -6,6 +6,15 @@ Parameters:
     Type: String
     Description: nooranhutlaari
 
+  InstanceTypeParameter:
+    Type: String
+    Default: t2.micro
+    Description: t2.micro Instance
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -14,3 +23,10 @@ Resources:
 
   MyQueue:
     Type: AWS::SQS::Queue
+
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType:
+        Ref: InstanceTypeParameter
+      ImageId: !Ref LatestAmiId
