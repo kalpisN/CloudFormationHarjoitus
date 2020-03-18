@@ -1,9 +1,13 @@
-AWSTemplateformatVersion: 2010-09-09
+AWSTemplateFormatVersion: 2010-09-09
 Description: Academy Demo CloudFormation
 
+Parameters:
+  BucketName:
+    Type: String
+    Description: nooranhutlaari
 
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
-    Poperties:
-      AccesControl: PublicRead
+    Properties:
+      BucketName: !Ref BucketName
