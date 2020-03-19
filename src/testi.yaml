@@ -51,6 +51,8 @@ Resources:
         - LoadBalancerPort: '80'
           InstancePort: '80'
           Protocol: HTTP
+      Instances:
+        - Ref: Ec2Instance
       SecurityGroups:
         - Ref: LoadBalancerSecurityGroup
 
