@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Academy Demo CloudFormation
 
 Parameters:
+
   BucketName:
     Type: String
     Description: nooranhutlaari
@@ -33,28 +34,43 @@ Resources:
   MyQueue:
     Type: AWS::SQS::Queue
 
-  Ec2Instance:
-    Type: AWS::EC2::Instance
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-      InstanceType:
-        Ref: InstanceTypeParameter
-      ImageId: !Ref LatestAmiId
-      SecurityGroups:
-        - Ref: InstanceSecurityGroup
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: ALBTargetGroup
+      LoadBalancerArn:
+        Ref: AppLoadBalancer
+      Port: 80
+      Protocol: HTTP
 
-  ApplicationLoadBalancer:
-    Type: AWS::ElasticLoadBalancing::LoadBalancer
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      AvailabilityZones:
-        - "eu-west-1a"
-      Listeners:
-        - LoadBalancerPort: '80'
-          InstancePort: '80'
-          Protocol: HTTP
-      Instances:
-        - Ref: Ec2Instance
+      Name: ALBTargetGroup
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      VpcId: vpc-32cc224b
+      Tags:
+        - Key: Name
+          Value: ALBTargetGroup
+        - Key: Port
+          Value: 80
+
+  AppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: noora
+      Scheme: internet-facing
+      Subnets:
+        - subnet-b984e1e3
+        - subnet-1e035878
+        - subnet-018ba049
       SecurityGroups:
-        - Ref: LoadBalancerSecurityGroup
+        - !Ref LoadBalancerSecurityGroup
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -73,18 +89,44 @@ Resources:
       VpcId: vpc-32cc224b
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: '22'
-          ToPort: '22'
-          CidrIp: !Ref 'SSHLocation'
-        - IpProtocol: tcp
           FromPort: '80'
           ToPort: '80'
           CidrIp: 0.0.0.0/0
 
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      InstanceType:
+        Ref: InstanceTypeParameter
+      ImageId:
+        Ref: LatestAmiId
+      SecurityGroups:
+        - Ref: InstanceSecurityGroup
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - "\n"
+            - - "#!/bin/bash"
+              - "amazon-linux-extras install epel"
+              - "amazon-linux-extras install nginx1"
+              - "systemctl start nginx"
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones:
+        - "eu-west-1a"
+        - "eu-west-1b"
+        - "eu-west-1c"
+      LaunchConfigurationName:
+        Ref: LaunchConfiguration
+      MinSize: 1
+      MaxSize: 3
+      TargetGroupARNs:
+        - Ref: ALBTargetGroup
 Outputs:
-  BackupLoadBalancerDNSName:
-    Description: The DNSName of the backup load balancer
-    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  AppLoadBalancerDNSName:
+    Value: !GetAtt AppLoadBalancer.DNSName
 
 
 
